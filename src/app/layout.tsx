@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import SWRegister from './sw-register'
+import SplashScreen from './splash-screen'
 
 export const metadata: Metadata = {
   title: "Nil's Music",
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body>
         <SWRegister />
+        <SplashScreen />
         {children}
       </body>
     </html>

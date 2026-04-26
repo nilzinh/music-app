@@ -14,6 +14,9 @@ type VideoItem = {
       medium: {
         url: string
       }
+      high?: {
+        url: string
+      }
     }
   }
 }
@@ -27,7 +30,7 @@ export default function OnlineSearch({ userId }: Props) {
 
   const [query, setQuery] = useState('')
   const [videos, setVideos] = useState<VideoItem[]>([])
-  const [selectedVideoId, setSelectedVideoId] = useState('')
+  const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null)
   const [loading, setLoading] = useState(false)
   const [favoriteLoadingId, setFavoriteLoadingId] = useState('')
 
@@ -73,7 +76,7 @@ export default function OnlineSearch({ userId }: Props) {
         .eq('video_id', video.id.videoId)
 
       if (existing && existing.length > 0) {
-        alert('Essa música já está nos favoritos.')
+        alert('Já está nos favoritos.')
         return
       }
 
@@ -82,7 +85,9 @@ export default function OnlineSearch({ userId }: Props) {
         video_id: video.id.videoId,
         title: video.snippet.title,
         channel_title: video.snippet.channelTitle,
-        thumbnail_url: video.snippet.thumbnails.medium.url,
+        thumbnail_url:
+          video.snippet.thumbnails.high?.url ||
+          video.snippet.thumbnails.medium.url,
       })
 
       if (error) {
@@ -90,21 +95,29 @@ export default function OnlineSearch({ userId }: Props) {
         return
       }
 
-      alert('Música adicionada aos favoritos!')
+      alert('Favoritado!')
     } catch (error) {
       console.error(error)
-      alert('Erro ao favoritar música.')
+      alert('Erro ao favoritar.')
     } finally {
       setFavoriteLoadingId('')
     }
   }
 
+  function handleToggleVideo(video: VideoItem) {
+    if (selectedVideo?.id.videoId === video.id.videoId) {
+      setSelectedVideo(null)
+    } else {
+      setSelectedVideo(video)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
+      <form onSubmit={handleSearch} className="flex gap-3">
         <input
           type="text"
-          placeholder="Ex: Imagine Dragons Believer"
+          placeholder="Buscar música..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="flex-1 p-4 rounded-full bg-zinc-950 border border-zinc-800 outline-none focus:border-green-500"
@@ -113,69 +126,101 @@ export default function OnlineSearch({ userId }: Props) {
         <button
           type="submit"
           disabled={loading}
-          className="bg-green-600 hover:bg-green-700 px-6 py-4 rounded-full font-semibold disabled:opacity-50"
+          className="bg-green-500 hover:bg-green-400 text-black px-6 rounded-full font-bold disabled:opacity-50"
         >
-          {loading ? 'Buscando...' : 'Buscar'}
+          {loading ? '...' : 'Buscar'}
         </button>
       </form>
 
-      {selectedVideoId && (
-        <div className="rounded-3xl overflow-hidden border border-zinc-800 bg-zinc-950 p-4">
-          <div className="aspect-video">
+      <div className="space-y-3 pb-40">
+        {videos.map((video) => {
+          const isCurrent = selectedVideo?.id.videoId === video.id.videoId
+
+          return (
+            <div
+              key={video.id.videoId}
+              className={`flex items-center gap-3 p-3 rounded-xl transition ${
+                isCurrent
+                  ? 'bg-zinc-900 border border-green-500'
+                  : 'bg-zinc-950 border border-zinc-800'
+              }`}
+            >
+              <img
+                src={video.snippet.thumbnails.medium.url}
+                alt={video.snippet.title}
+                className="w-14 h-14 rounded-md object-cover"
+              />
+
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`truncate font-medium ${
+                    isCurrent ? 'text-green-400' : 'text-white'
+                  }`}
+                >
+                  {video.snippet.title}
+                </p>
+                <p className="text-xs text-zinc-400 truncate">
+                  {video.snippet.channelTitle}
+                </p>
+              </div>
+
+              <button
+                onClick={() => handleToggleVideo(video)}
+                className={`px-3 py-1 rounded-full text-sm font-bold ${
+                  isCurrent
+                    ? 'bg-white text-black'
+                    : 'bg-green-500 text-black hover:bg-green-400'
+                }`}
+              >
+                {isCurrent ? '■' : '▶'}
+              </button>
+
+              <button
+                onClick={() => handleFavorite(video)}
+                disabled={favoriteLoadingId === video.id.videoId}
+                className="text-green-500 text-xl disabled:opacity-50"
+              >
+                {favoriteLoadingId === video.id.videoId ? '…' : '💚'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+
+      {selectedVideo && (
+        <div className="fixed bottom-0 left-0 right-0 bg-zinc-950 border-t border-zinc-800 p-3 shadow-2xl">
+          <div className="max-w-5xl mx-auto flex items-center gap-3">
+            <img
+              src={selectedVideo.snippet.thumbnails.medium.url}
+              alt={selectedVideo.snippet.title}
+              className="w-12 h-12 rounded object-cover"
+            />
+
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-sm font-semibold">
+                {selectedVideo.snippet.title}
+              </p>
+              <p className="text-xs text-zinc-400 truncate">
+                {selectedVideo.snippet.channelTitle}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setSelectedVideo(null)}
+              className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-full text-sm font-semibold"
+            >
+              Fechar
+            </button>
+          </div>
+
+          <div className="w-0 h-0 overflow-hidden">
             <iframe
-              className="w-full h-full rounded-2xl"
-              src={`https://www.youtube.com/embed/${selectedVideoId}?autoplay=1`}
-              title="Player online"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
+              src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1`}
+              allow="autoplay"
             />
           </div>
         </div>
       )}
-
-      <div className="grid gap-3">
-        {videos.map((video) => (
-          <div
-            key={video.id.videoId}
-            className="flex flex-col sm:flex-row gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-3"
-          >
-            <img
-              src={video.snippet.thumbnails.medium.url}
-              alt={video.snippet.title}
-              className="w-full sm:w-40 h-32 sm:h-24 object-cover rounded-xl"
-            />
-
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold line-clamp-2">
-                {video.snippet.title}
-              </h2>
-
-              <p className="text-sm text-zinc-400 mt-1">
-                {video.snippet.channelTitle}
-              </p>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedVideoId(video.id.videoId)}
-                  className="bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-full font-semibold text-sm"
-                >
-                  Tocar online
-                </button>
-
-                <button
-                  onClick={() => handleFavorite(video)}
-                  disabled={favoriteLoadingId === video.id.videoId}
-                  className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-full font-semibold text-sm disabled:opacity-50"
-                >
-                  {favoriteLoadingId === video.id.videoId
-                    ? 'Salvando...'
-                    : 'Favoritar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
