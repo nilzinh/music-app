@@ -117,6 +117,8 @@ export default function OnlineSearch({ userId }: Props) {
       <form onSubmit={handleSearch} className="flex gap-3">
         <input
           type="text"
+          id="music-search"
+          name="music-search"
           placeholder="Buscar música..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
