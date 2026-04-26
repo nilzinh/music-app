@@ -15,11 +15,6 @@ export default function AuthPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!email || !password) {
-      alert('Preencha email e senha.')
-      return
-    }
-
     try {
       setLoading(true)
 
@@ -34,17 +29,16 @@ export default function AuthPage() {
       }
 
       router.push('/dashboard')
-      router.refresh()
+    } catch (error) {
+      console.error(error)
+      alert('Erro ao fazer login')
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleRegister() {
-    if (!email || !password) {
-      alert('Preencha email e senha.')
-      return
-    }
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault()
 
     try {
       setLoading(true)
@@ -59,66 +53,60 @@ export default function AuthPage() {
         return
       }
 
-      alert('Conta criada! Agora faça login.')
+      alert('Conta criada! Faça login.')
+    } catch (error) {
+      console.error(error)
+      alert('Erro ao criar conta')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <main className="min-h-screen bg-black text-white flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.22),transparent_35%)]" />
+    <div className="flex items-center justify-center min-h-screen bg-black px-4">
+      <div className="w-full max-w-md bg-zinc-900 p-8 rounded-2xl border border-zinc-800">
+        <h1 className="text-2xl font-bold text-center mb-6">
+          Nil's Music
+        </h1>
 
-      <div className="relative w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950/90 p-8 shadow-2xl">
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-5 w-20 h-20 rounded-3xl bg-green-500 flex items-center justify-center text-5xl text-black font-black shadow-lg shadow-green-900/30">
-            ♫
-          </div>
-
-          <h1 className="text-4xl font-black">Nil&apos;s Music</h1>
-          <p className="text-zinc-400 mt-2">
-            Busque, favorite e ouça músicas online.
-          </p>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form className="space-y-4">
           <input
+            id="email"
+            name="email"
             type="email"
             placeholder="Seu email"
-            className="w-full p-4 rounded-full bg-zinc-900 border border-zinc-800 outline-none focus:border-green-500"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="w-full p-4 rounded-full bg-zinc-950 border border-zinc-800 outline-none focus:border-green-500"
           />
 
           <input
+            id="password"
+            name="password"
             type="password"
             placeholder="Sua senha"
-            className="w-full p-4 rounded-full bg-zinc-900 border border-zinc-800 outline-none focus:border-green-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-4 rounded-full bg-zinc-950 border border-zinc-800 outline-none focus:border-green-500"
           />
 
           <button
-            type="submit"
+            onClick={handleLogin}
             disabled={loading}
-            className="w-full bg-green-500 hover:bg-green-400 text-black p-4 rounded-full font-bold transition disabled:opacity-50"
+            className="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-3 rounded-full"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
+
+          <button
+            onClick={handleRegister}
+            disabled={loading}
+            className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 rounded-full"
+          >
+            Criar conta
+          </button>
         </form>
-
-        <button
-          onClick={handleRegister}
-          disabled={loading}
-          className="w-full mt-4 bg-zinc-900 hover:bg-zinc-800 p-4 rounded-full font-semibold transition disabled:opacity-50"
-        >
-          Criar conta
-        </button>
-
-        <p className="text-center text-xs text-zinc-500 mt-6">
-          Nil&apos;s Music • Online Player
-        </p>
       </div>
-    </main>
+    </div>
   )
 }
