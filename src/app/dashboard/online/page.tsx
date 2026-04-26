@@ -15,24 +15,26 @@ export default async function OnlinePage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <div className="max-w-6xl mx-auto px-4 py-8 pb-32">
-        <div className="mb-8 rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <h1 className="text-4xl font-bold">Buscar músicas online</h1>
-          <p className="text-zinc-400 mt-2">
-            Pesquise músicas no YouTube e toque sem baixar.
-          </p>
-
-          <div className="mt-5 flex gap-3">
-            <a
-              href="/dashboard"
-              className="bg-white text-black px-5 py-3 rounded-full font-semibold"
-            >
-              Voltar
-            </a>
+      <div className="max-w-5xl mx-auto px-4 py-6 pb-40">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Buscar online</h1>
+            <p className="text-zinc-400 text-sm">
+              Pesquise músicas online e toque sem baixar.
+            </p>
           </div>
+
+          <a
+            href="/dashboard"
+            className="bg-white text-black px-4 py-2 rounded-full text-sm font-semibold"
+          >
+            Voltar
+          </a>
         </div>
 
-        <OnlineSearch />
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+          <OnlineSearch userId={user.id} />
+        </div>
       </div>
     </main>
   )
