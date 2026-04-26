@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import FavoriteButton from './favorite-button'
 import DeleteSongButton from './delete-song-button'
+import AddToPlaylistButton from './add-to-playlist-button'
+import ShareSongButton from './share-song-button'
 
 type Song = {
   id: string
@@ -242,52 +244,51 @@ export default function MusicList({
             return (
               <div
                 key={song.id}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl transition ${
-                  isCurrent ? 'bg-zinc-800' : 'hover:bg-zinc-900'
+                className={`group grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-2xl px-4 py-3 transition ${
+                  isCurrent
+                    ? 'bg-zinc-900 border border-zinc-800'
+                    : 'hover:bg-zinc-950'
                 }`}
               >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-zinc-800 flex items-center justify-center shrink-0">
-                    {song.cover_url ? (
-                      <img
-                        src={song.cover_url}
-                        alt={song.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs text-zinc-500">♪</span>
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <p
-                      className={`font-medium truncate ${
-                        isCurrent ? 'text-green-400' : 'text-white'
-                      }`}
-                    >
-                      {song.title}
-                    </p>
-                    <p className="text-sm text-zinc-400 truncate">
-                      {song.artist}
-                    </p>
-                  </div>
+                <div className="w-14 h-14 rounded-lg overflow-hidden bg-zinc-800 flex items-center justify-center shrink-0">
+                  {song.cover_url ? (
+                    <img
+                      src={song.cover_url}
+                      alt={song.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-zinc-500">♪</span>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-4 shrink-0">
+                <div className="min-w-0">
+                  <p
+                    className={`font-medium truncate ${
+                      isCurrent ? 'text-green-400' : 'text-white'
+                    }`}
+                  >
+                    {song.title}
+                  </p>
+                  <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handlePlay(index)}
-                    className="bg-green-500 hover:bg-green-400 text-black w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold"
+                    className="bg-green-500 hover:bg-green-400 text-black w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold shadow-md transition"
                     title="Tocar"
                   >
                     ▶
                   </button>
 
+                  <AddToPlaylistButton songId={song.id} userId={userId} />
+                  <ShareSongButton songId={song.id} />
                   <FavoriteButton
                     songId={song.id}
                     userId={userId}
                     isFavorite={isFavorite}
                   />
-
                   <DeleteSongButton songId={song.id} />
                 </div>
               </div>
@@ -297,10 +298,10 @@ export default function MusicList({
       )}
 
       {currentSong && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-md px-4 py-4 shadow-2xl">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[320px_1fr_220px] gap-4 items-center">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="w-16 h-16 rounded-xl overflow-hidden bg-zinc-800 flex items-center justify-center shrink-0">
+        <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-950/98 backdrop-blur-md px-4 py-3 shadow-2xl">
+          <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[300px_1fr_220px] gap-4 items-center">
+            <div className="hidden lg:flex items-center gap-3 min-w-0">
+              <div className="w-14 h-14 rounded-md overflow-hidden bg-zinc-800 flex items-center justify-center shrink-0">
                 {currentSong.cover_url ? (
                   <img
                     src={currentSong.cover_url}
@@ -308,26 +309,22 @@ export default function MusicList({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-zinc-500 text-xs">Sem capa</span>
+                  <span className="text-zinc-500 text-xs">♪</span>
                 )}
               </div>
 
               <div className="min-w-0">
-                <p className="font-semibold truncate">{currentSong.title}</p>
-                <p className="text-sm text-zinc-400 truncate">
-                  {currentSong.artist}
-                </p>
+                <p className="text-sm font-medium truncate">{currentSong.title}</p>
+                <p className="text-xs text-zinc-400 truncate">{currentSong.artist}</p>
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-3 w-full">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col items-center justify-center gap-2">
+              <div className="flex items-center gap-5">
                 <button
                   onClick={() => setIsShuffle(!isShuffle)}
-                  className={`px-3 py-2 rounded-full text-sm ${
-                    isShuffle
-                      ? 'bg-purple-600 hover:bg-purple-700'
-                      : 'bg-zinc-800 hover:bg-zinc-700'
+                  className={`text-sm transition ${
+                    isShuffle ? 'text-green-500' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   🔀
@@ -335,39 +332,37 @@ export default function MusicList({
 
                 <button
                   onClick={handlePrevSong}
-                  className="bg-zinc-800 hover:bg-zinc-700 w-10 h-10 rounded-full flex items-center justify-center"
+                  className="text-zinc-300 hover:text-white transition"
                 >
                   ⏮
                 </button>
 
                 <button
                   onClick={handleTogglePlayPause}
-                  className="bg-white text-black hover:bg-zinc-200 w-12 h-12 rounded-full flex items-center justify-center font-bold"
+                  className="bg-white text-black hover:scale-105 w-11 h-11 rounded-full flex items-center justify-center font-bold transition"
                 >
                   {isPlaying ? '❚❚' : '▶'}
                 </button>
 
                 <button
                   onClick={handleNextSong}
-                  className="bg-zinc-800 hover:bg-zinc-700 w-10 h-10 rounded-full flex items-center justify-center"
+                  className="text-zinc-300 hover:text-white transition"
                 >
                   ⏭
                 </button>
 
                 <button
                   onClick={() => setIsRepeat(!isRepeat)}
-                  className={`px-3 py-2 rounded-full text-sm ${
-                    isRepeat
-                      ? 'bg-blue-600 hover:bg-blue-700'
-                      : 'bg-zinc-800 hover:bg-zinc-700'
+                  className={`text-sm transition ${
+                    isRepeat ? 'text-green-500' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   🔁
                 </button>
               </div>
 
-              <div className="flex items-center gap-3 w-full">
-                <span className="text-xs text-zinc-400 w-10 text-right">
+              <div className="flex items-center gap-3 w-full max-w-[680px]">
+                <span className="text-[11px] text-zinc-400 w-10 text-right">
                   {formatTime(currentTime)}
                 </span>
 
@@ -378,16 +373,16 @@ export default function MusicList({
                   step="0.1"
                   value={currentTime}
                   onChange={handleSeek}
-                  className="w-full accent-green-500"
+                  className="w-full accent-white cursor-pointer"
                 />
 
-                <span className="text-xs text-zinc-400 w-10">
+                <span className="text-[11px] text-zinc-400 w-10">
                   {formatTime(duration)}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 justify-center lg:justify-end">
+            <div className="hidden lg:flex items-center justify-end gap-3">
               <span className="text-sm text-zinc-400">🔊</span>
               <input
                 type="range"
@@ -396,7 +391,7 @@ export default function MusicList({
                 step="0.01"
                 value={volume}
                 onChange={handleVolumeChange}
-                className="w-28 accent-green-500"
+                className="w-28 accent-white cursor-pointer"
               />
             </div>
 

@@ -101,10 +101,10 @@ export default function DeleteSongButton({ songId }: DeleteSongButtonProps) {
     <button
       onClick={handleDelete}
       disabled={loading}
-      className="text-red-500 hover:text-red-400 transition text-xl disabled:opacity-50"
+      className="w-10 h-10 rounded-full bg-zinc-900 hover:bg-zinc-800 flex items-center justify-center transition disabled:opacity-50"
       title="Excluir música"
     >
-      {loading ? '…' : '🗑'}
+      <span className="text-lg text-red-400">{loading ? '…' : '🗑'}</span>
     </button>
   )
 }

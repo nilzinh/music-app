@@ -59,10 +59,10 @@ export default function FavoriteButton({
     <button
       onClick={handleToggleFavorite}
       disabled={loading}
-      className="text-2xl hover:scale-110 transition disabled:opacity-50"
+      className="w-10 h-10 rounded-full bg-zinc-900 hover:bg-zinc-800 flex items-center justify-center transition disabled:opacity-50"
       title={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
     >
-      {loading ? '…' : isFavorite ? '💚' : '🤍'}
+      <span className="text-lg">{loading ? '…' : isFavorite ? '💚' : '🤍'}</span>
     </button>
   )
 }
