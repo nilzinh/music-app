@@ -18,7 +18,7 @@ export default async function DashboardPage() {
       <div className="max-w-5xl mx-auto px-4 py-6 pb-40">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Meu Music App</h1>
+            <h1 className="text-3xl font-bold">Nil's Music</h1>
             <p className="text-zinc-400 text-sm">
               Buscar e ouvir músicas online
             </p>

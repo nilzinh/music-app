@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Meu Music App',
-    short_name: 'Music App',
-    description: 'Seu app de música estilo Spotify',
+    name: "Nil's Music",
+    short_name: "Nil's Music",
+    description: "Busque e ouça músicas online com Nil's Music",
     start_url: '/dashboard',
     display: 'standalone',
     background_color: '#000000',
-    theme_color: '#16a34a',
+    theme_color: '#22c55e',
     orientation: 'portrait',
     icons: [
       {

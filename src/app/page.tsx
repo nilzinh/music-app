@@ -1,13 +1,16 @@
-import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
-export default function Home() {
-  return (
-    <main style={{ padding: 20 }}>
-      <h1>Music App</h1>
+export default async function Home() {
+  const supabase = await createClient()
 
-      <Link href="/auth">
-        <button>Ir para login</button>
-      </Link>
-    </main>
-  )
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    redirect('/dashboard')
+  }
+
+  redirect('/auth')
 }
