@@ -70,20 +70,24 @@ export default function AuthPage() {
         </h1>
 
         <form className="space-y-4">
+          {/* EMAIL */}
           <input
             id="email"
             name="email"
             type="email"
+            autoComplete="email"
             placeholder="Seu email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full p-4 rounded-full bg-zinc-950 border border-zinc-800 outline-none focus:border-green-500"
           />
 
+          {/* SENHA */}
           <input
             id="password"
             name="password"
             type="password"
+            autoComplete="current-password"
             placeholder="Sua senha"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

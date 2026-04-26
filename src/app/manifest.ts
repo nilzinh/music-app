@@ -37,7 +37,7 @@ export default function manifest(): MetadataRoute.Manifest {
   },
   {
     src: '/screenshot-mobile.png',
-    sizes: '720x1280',
+    sizes: '1600x720',
     type: 'image/png',
   },
      ],
