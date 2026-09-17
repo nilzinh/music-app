@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import OnlineFavoritesList from './online-favorites-list'
 
 type OnlineFavorite = {
@@ -34,18 +35,21 @@ export default async function OnlineFavoritesPage() {
       <div className="max-w-5xl mx-auto px-4 py-6 pb-40">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Favoritos Online</h1>
+            <h1 className="text-3xl font-bold">
+              Favoritos Online
+            </h1>
+
             <p className="text-zinc-400 text-sm">
               Suas músicas favoritas pesquisadas online
             </p>
           </div>
 
-          <a
+          <Link
             href="/dashboard"
             className="bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-full text-sm font-semibold text-center"
           >
             Voltar
-          </a>
+          </Link>
         </div>
 
         <OnlineFavoritesList favorites={favorites} />
