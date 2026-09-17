@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import usePlayer from '@/hooks/usePlayer'
 
 type VideoItem = {
@@ -29,12 +29,45 @@ type Props = {
 export default function OnlineSearch({ userId }: Props) {
   const supabase = createClient()
 
-  const { play } = usePlayer()
+  const { play, stop, registerController } = usePlayer()
   const [query, setQuery] = useState('')
   const [videos, setVideos] = useState<VideoItem[]>([])
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null)
   const [loading, setLoading] = useState(false)
   const [favoriteLoadingId, setFavoriteLoadingId] = useState('')
+  const iframeRef = useRef<HTMLIFrameElement | null>(null)
+
+function sendYoutubeCommand(command: string) {
+  iframeRef.current?.contentWindow?.postMessage(
+    JSON.stringify({
+      event: 'command',
+      func: command,
+      args: [],
+    }),
+    '*'
+  )
+}
+
+useEffect(() => {
+  registerController({
+    pause: () => {
+      sendYoutubeCommand('pauseVideo')
+    },
+
+    resume: () => {
+      sendYoutubeCommand('playVideo')
+    },
+
+    stop: () => {
+      sendYoutubeCommand('stopVideo')
+      setSelectedVideo(null)
+    },
+  })
+
+  return () => {
+    registerController(null)
+  }
+}, [registerController])
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -109,9 +142,21 @@ export default function OnlineSearch({ userId }: Props) {
   function handleToggleVideo(video: VideoItem) {
   if (selectedVideo?.id.videoId === video.id.videoId) {
     setSelectedVideo(null)
-  } else {
-    setSelectedVideo(video)
+    stop()
+    return
   }
+
+  setSelectedVideo(video)
+
+  play({
+    id: video.id.videoId,
+    videoId: video.id.videoId,
+    title: video.snippet.title,
+    artist: video.snippet.channelTitle,
+    thumbnail:
+      video.snippet.thumbnails.high?.url ??
+      video.snippet.thumbnails.medium.url,
+  })
 }
   
 
@@ -220,9 +265,11 @@ export default function OnlineSearch({ userId }: Props) {
 
           <div className="w-0 h-0 overflow-hidden">
             <iframe
-              src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1`}
-              allow="autoplay"
-            />
+  ref={iframeRef}
+  src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1&enablejsapi=1`}
+  allow="autoplay; encrypted-media"
+  title={selectedVideo.snippet.title}
+/>
           </div>
         </div>
       )}

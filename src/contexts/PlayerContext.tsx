@@ -4,10 +4,17 @@ import {
   createContext,
   ReactNode,
   useContext,
-  useMemo,
+  useRef,
   useState,
 } from 'react'
+
 import { Song } from '@/types/song'
+
+export type PlayerController = {
+  pause: () => void
+  resume: () => void
+  stop: () => void
+}
 
 export type PlayerContextType = {
   currentSong: Song | null
@@ -24,6 +31,8 @@ export type PlayerContextType = {
   previous: () => void
 
   setQueue: (songs: Song[], startIndex?: number) => void
+
+  registerController: (controller: PlayerController | null) => void
 }
 
 const PlayerContext = createContext<PlayerContextType | null>(null)
@@ -38,22 +47,34 @@ export function PlayerProvider({
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [isPlaying, setIsPlaying] = useState(false)
 
+  const controllerRef = useRef<PlayerController | null>(null)
+
+  function registerController(controller: PlayerController | null) {
+    controllerRef.current = controller
+  }
+
   function play(song: Song) {
     setCurrentSong(song)
     setIsPlaying(true)
   }
 
   function pause() {
+    controllerRef.current?.pause()
     setIsPlaying(false)
   }
 
   function resume() {
-    if (currentSong) {
-      setIsPlaying(true)
+    if (!currentSong) {
+      return
     }
+
+    controllerRef.current?.resume()
+    setIsPlaying(true)
   }
 
   function stop() {
+    controllerRef.current?.stop()
+
     setCurrentSong(null)
     setCurrentIndex(-1)
     setIsPlaying(false)
@@ -63,51 +84,55 @@ export function PlayerProvider({
     setQueueState(songs)
     setCurrentIndex(startIndex)
 
-    if (songs[startIndex]) {
-      setCurrentSong(songs[startIndex])
+    const song = songs[startIndex]
+
+    if (song) {
+      setCurrentSong(song)
       setIsPlaying(true)
     }
   }
 
   function next() {
-    if (currentIndex < queue.length - 1) {
-      const index = currentIndex + 1
+    const nextIndex = currentIndex + 1
 
-      setCurrentIndex(index)
-      setCurrentSong(queue[index])
-      setIsPlaying(true)
+    if (nextIndex >= queue.length) {
+      return
     }
+
+    setCurrentIndex(nextIndex)
+    setCurrentSong(queue[nextIndex])
+    setIsPlaying(true)
   }
 
   function previous() {
-    if (currentIndex > 0) {
-      const index = currentIndex - 1
+    const previousIndex = currentIndex - 1
 
-      setCurrentIndex(index)
-      setCurrentSong(queue[index])
-      setIsPlaying(true)
+    if (previousIndex < 0) {
+      return
     }
+
+    setCurrentIndex(previousIndex)
+    setCurrentSong(queue[previousIndex])
+    setIsPlaying(true)
   }
 
-  const value = useMemo(
-    () => ({
-      currentSong,
-      queue,
-      currentIndex,
-      isPlaying,
-      play,
-      pause,
-      resume,
-      stop,
-      next,
-      previous,
-      setQueue,
-    }),
-    [currentSong, queue, currentIndex, isPlaying]
-  )
-
   return (
-    <PlayerContext.Provider value={value}>
+    <PlayerContext.Provider
+      value={{
+        currentSong,
+        queue,
+        currentIndex,
+        isPlaying,
+        play,
+        pause,
+        resume,
+        stop,
+        next,
+        previous,
+        setQueue,
+        registerController,
+      }}
+    >
       {children}
     </PlayerContext.Provider>
   )

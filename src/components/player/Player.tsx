@@ -1,7 +1,7 @@
 'use client'
 
 import usePlayer from '@/hooks/usePlayer'
-import YoutubePlayer from './YoutubePlayer'
+
 
 export default function Player() {
 
@@ -36,7 +36,7 @@ export default function Player() {
 
   return (
 <>
-    <YoutubePlayer />
+    
     <div className="
       fixed
       bottom-0
