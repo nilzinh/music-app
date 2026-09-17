@@ -26,6 +26,47 @@ type Props = {
   userId: string
 }
 
+type YouTubePlayer = {
+  playVideo: () => void
+  pauseVideo: () => void
+  stopVideo: () => void
+  destroy: () => void
+}
+
+type YouTubePlayerStateChangeEvent = {
+  data: number
+}
+
+type YouTubeNamespace = {
+  Player: new (
+    element: HTMLElement,
+    options: {
+      videoId: string
+      playerVars?: {
+        autoplay?: number
+        playsinline?: number
+      }
+      events?: {
+        onReady?: () => void
+        onStateChange?: (
+          event: YouTubePlayerStateChangeEvent
+        ) => void
+      }
+    }
+  ) => YouTubePlayer
+
+  PlayerState: {
+    ENDED: number
+  }
+}
+
+declare global {
+  interface Window {
+    YT?: YouTubeNamespace
+    onYouTubeIframeAPIReady?: () => void
+  }
+}
+
 export default function OnlineSearch({ userId }: Props) {
   const supabase = createClient()
 
@@ -45,34 +86,159 @@ export default function OnlineSearch({ userId }: Props) {
     useState<VideoItem | null>(null)
 
   const [loading, setLoading] = useState(false)
-  const [favoriteLoadingId, setFavoriteLoadingId] = useState('')
+  const [favoriteLoadingId, setFavoriteLoadingId] =
+    useState('')
 
-  const iframeRef = useRef<HTMLIFrameElement | null>(null)
+  const playerRef = useRef<YouTubePlayer | null>(null)
+  const playerContainerRef = useRef<HTMLDivElement | null>(null)
 
-  function sendYoutubeCommand(command: string) {
-    iframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({
-        event: 'command',
-        func: command,
-        args: [],
-      }),
-      '*'
-    )
+  const nextRef = useRef(next)
+  const currentIndexRef = useRef(currentIndex)
+  const queueLengthRef = useRef(queue.length)
+
+  useEffect(() => {
+    nextRef.current = next
+  }, [next])
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex
+    queueLengthRef.current = queue.length
+  }, [currentIndex, queue.length])
+
+  // Carrega a API oficial do YouTube uma única vez.
+  useEffect(() => {
+    if (window.YT?.Player) {
+      return
+    }
+
+    const existingScript =
+      document.getElementById('youtube-iframe-api')
+
+    if (existingScript) {
+      return
+    }
+
+    const script = document.createElement('script')
+
+    script.id = 'youtube-iframe-api'
+    script.src = 'https://www.youtube.com/iframe_api'
+    script.async = true
+
+    document.body.appendChild(script)
+  }, [])
+
+  // Cria o player sempre que a música atual mudar.
+  useEffect(() => {
+  if (!currentSong || !playerContainerRef.current) {
+    return
   }
 
-  // Liga os controles do Mini Player ao iframe real
+  const song = currentSong
+  let cancelled = false
+
+    function createPlayer() {
+      if (
+        cancelled ||
+        !window.YT?.Player ||
+        !playerContainerRef.current
+      ) {
+        return
+      }
+
+      if (playerRef.current) {
+        try {
+          playerRef.current.destroy()
+        } catch {
+          // Player anterior já foi removido.
+        }
+
+        playerRef.current = null
+      }
+
+      // O YouTube substitui o elemento recebido por um iframe.
+      // Criamos um elemento novo para cada música.
+      playerContainerRef.current.innerHTML = ''
+
+      const playerElement = document.createElement('div')
+
+      playerContainerRef.current.appendChild(playerElement)
+
+      playerRef.current = new window.YT.Player(
+        playerElement,
+        {
+          videoId: song.videoId,
+
+          playerVars: {
+            autoplay: 1,
+            playsinline: 1,
+          },
+
+          events: {
+            onReady: () => {
+              playerRef.current?.playVideo()
+            },
+
+            onStateChange: (event) => {
+              if (
+                event.data ===
+                window.YT?.PlayerState.ENDED
+              ) {
+                const index = currentIndexRef.current
+                const total = queueLengthRef.current
+
+                if (
+                  index >= 0 &&
+                  index < total - 1
+                ) {
+                  nextRef.current()
+                }
+              }
+            },
+          },
+        }
+      )
+    }
+
+    if (window.YT?.Player) {
+      createPlayer()
+    } else {
+      const previousCallback =
+        window.onYouTubeIframeAPIReady
+
+      window.onYouTubeIframeAPIReady = () => {
+        previousCallback?.()
+        createPlayer()
+      }
+    }
+
+    return () => {
+      cancelled = true
+
+      if (playerRef.current) {
+        try {
+          playerRef.current.destroy()
+        } catch {
+          // Ignora caso o iframe já tenha sido removido.
+        }
+
+        playerRef.current = null
+      }
+    }
+  }, [currentSong])
+
+  // Liga os botões do Mini Player ao player do YouTube.
   useEffect(() => {
     registerController({
       pause: () => {
-        sendYoutubeCommand('pauseVideo')
+        playerRef.current?.pauseVideo()
       },
 
       resume: () => {
-        sendYoutubeCommand('playVideo')
+        playerRef.current?.playVideo()
       },
 
       stop: () => {
-        sendYoutubeCommand('stopVideo')
+        playerRef.current?.stopVideo()
         setSelectedVideo(null)
       },
     })
@@ -82,66 +248,22 @@ export default function OnlineSearch({ userId }: Props) {
     }
   }, [registerController])
 
-  // Quando currentSong muda por causa de Próxima/Anterior,
-  // encontra o vídeo correspondente e troca o iframe.
+  // Sincroniza a lista visual com a música atual.
   useEffect(() => {
     if (!currentSong) {
+      setSelectedVideo(null)
       return
     }
 
     const video = videos.find(
-      (item) => item.id.videoId === currentSong.videoId
+      (item) =>
+        item.id.videoId === currentSong.videoId
     )
 
     if (video) {
       setSelectedVideo(video)
     }
   }, [currentSong, videos])
-
-  // Escuta mensagens enviadas pelo YouTube.
-  // Estado 0 significa que o vídeo terminou.
-  useEffect(() => {
-    function handleYoutubeMessage(event: MessageEvent) {
-      if (
-        event.origin !== 'https://www.youtube.com' &&
-        event.origin !== 'https://www.youtube-nocookie.com'
-      ) {
-        return
-      }
-
-      let data
-
-      try {
-        data =
-          typeof event.data === 'string'
-            ? JSON.parse(event.data)
-            : event.data
-      } catch {
-        return
-      }
-
-      if (
-        data?.event === 'onStateChange' &&
-        data?.info === 0
-      ) {
-        if (
-          currentIndex >= 0 &&
-          currentIndex < queue.length - 1
-        ) {
-          next()
-        }
-      }
-    }
-
-    window.addEventListener('message', handleYoutubeMessage)
-
-    return () => {
-      window.removeEventListener(
-        'message',
-        handleYoutubeMessage
-      )
-    }
-  }, [currentIndex, queue.length, next])
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -155,7 +277,9 @@ export default function OnlineSearch({ userId }: Props) {
       setLoading(true)
 
       const response = await fetch(
-        `/api/youtube-search?q=${encodeURIComponent(query)}`
+        `/api/youtube-search?q=${encodeURIComponent(
+          query
+        )}`
       )
 
       const data = await response.json()
@@ -195,7 +319,8 @@ export default function OnlineSearch({ userId }: Props) {
           user_id: userId,
           video_id: video.id.videoId,
           title: video.snippet.title,
-          channel_title: video.snippet.channelTitle,
+          channel_title:
+            video.snippet.channelTitle,
           thumbnail_url:
             video.snippet.thumbnails.high?.url ||
             video.snippet.thumbnails.medium.url,
@@ -216,8 +341,10 @@ export default function OnlineSearch({ userId }: Props) {
   }
 
   function handleToggleVideo(video: VideoItem) {
-    if (selectedVideo?.id.videoId === video.id.videoId) {
-      setSelectedVideo(null)
+    if (
+      selectedVideo?.id.videoId ===
+      video.id.videoId
+    ) {
       stop()
       return
     }
@@ -233,7 +360,8 @@ export default function OnlineSearch({ userId }: Props) {
     }))
 
     const startIndex = videos.findIndex(
-      (item) => item.id.videoId === video.id.videoId
+      (item) =>
+        item.id.videoId === video.id.videoId
     )
 
     setSelectedVideo(video)
@@ -252,7 +380,9 @@ export default function OnlineSearch({ userId }: Props) {
           name="music-search"
           placeholder="Buscar música..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) =>
+            setQuery(e.target.value)
+          }
           className="flex-1 p-4 rounded-full bg-zinc-950 border border-zinc-800 outline-none focus:border-green-500"
         />
 
@@ -268,7 +398,8 @@ export default function OnlineSearch({ userId }: Props) {
       <div className="space-y-3 pb-40">
         {videos.map((video) => {
           const isCurrent =
-            selectedVideo?.id.videoId === video.id.videoId
+            currentSong?.videoId ===
+            video.id.videoId
 
           return (
             <div
@@ -280,7 +411,10 @@ export default function OnlineSearch({ userId }: Props) {
               }`}
             >
               <img
-                src={video.snippet.thumbnails.medium.url}
+                src={
+                  video.snippet.thumbnails.medium
+                    .url
+                }
                 alt={video.snippet.title}
                 className="w-14 h-14 rounded-md object-cover"
               />
@@ -303,7 +437,9 @@ export default function OnlineSearch({ userId }: Props) {
 
               <button
                 type="button"
-                onClick={() => handleToggleVideo(video)}
+                onClick={() =>
+                  handleToggleVideo(video)
+                }
                 className={`px-3 py-1 rounded-full text-sm font-bold ${
                   isCurrent
                     ? 'bg-white text-black'
@@ -315,13 +451,17 @@ export default function OnlineSearch({ userId }: Props) {
 
               <button
                 type="button"
-                onClick={() => handleFavorite(video)}
+                onClick={() =>
+                  handleFavorite(video)
+                }
                 disabled={
-                  favoriteLoadingId === video.id.videoId
+                  favoriteLoadingId ===
+                  video.id.videoId
                 }
                 className="text-green-500 text-xl disabled:opacity-50"
               >
-                {favoriteLoadingId === video.id.videoId
+                {favoriteLoadingId ===
+                video.id.videoId
                   ? '…'
                   : '💚'}
               </button>
@@ -330,57 +470,14 @@ export default function OnlineSearch({ userId }: Props) {
         })}
       </div>
 
-      {selectedVideo && (
-        <div className="fixed bottom-0 left-0 right-0 bg-zinc-950 border-t border-zinc-800 p-3 shadow-2xl">
-          <div className="max-w-5xl mx-auto flex items-center gap-3">
-            <img
-              src={
-                selectedVideo.snippet.thumbnails.medium.url
-              }
-              alt={selectedVideo.snippet.title}
-              className="w-12 h-12 rounded object-cover"
-            />
-
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-semibold">
-                {selectedVideo.snippet.title}
-              </p>
-
-              <p className="text-xs text-zinc-400 truncate">
-                {selectedVideo.snippet.channelTitle}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={stop}
-              className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-full text-sm font-semibold"
-            >
-              Fechar
-            </button>
-          </div>
-
-          <div className="w-0 h-0 overflow-hidden">
-            <iframe
-              ref={iframeRef}
-              src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(
-                window.location.origin
-              )}`}
-              allow="autoplay; encrypted-media"
-              title={selectedVideo.snippet.title}
-              onLoad={() => {
-                iframeRef.current?.contentWindow?.postMessage(
-                  JSON.stringify({
-                    event: 'listening',
-                    id: 'nils-music-player',
-                  }),
-                  '*'
-                )
-              }}
-            />
-          </div>
-        </div>
-      )}
+      
+      {/* Player do YouTube controlado pela IFrame API */}
+      <div
+        className="fixed w-px h-px overflow-hidden -left-10 -bottom-10"
+        aria-hidden="true"
+      >
+        <div ref={playerContainerRef} />
+      </div>
     </div>
   )
 }
