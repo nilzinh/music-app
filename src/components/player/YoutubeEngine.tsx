@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import usePlayer from '@/hooks/usePlayer'
+import { createClient } from '@/lib/supabase/client'
 
 type YouTubePlayer = {
   playVideo: () => void
@@ -32,6 +33,7 @@ type YouTubeNamespace = {
 
   PlayerState: {
     ENDED: number
+    PLAYING: number
   }
 }
 
@@ -57,6 +59,12 @@ export default function YoutubeEngine() {
   const nextRef = useRef(next)
   const currentIndexRef = useRef(currentIndex)
   const queueLengthRef = useRef(queue.length)
+
+  /*
+   * Evita registrar várias vezes a mesma reprodução
+   * quando o YouTube dispara PLAYING novamente após pause.
+   */
+  const historyVideoIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     nextRef.current = next
@@ -92,6 +100,73 @@ export default function YoutubeEngine() {
 
     const song = currentSong
     let cancelled = false
+
+    /*
+     * Como começou uma nova música, permitimos
+     * que ela seja registrada no histórico.
+     */
+    historyVideoIdRef.current = null
+
+    async function saveHistory() {
+      /*
+       * Se esta música já foi registrada nesta
+       * reprodução, não grava novamente.
+       */
+      if (historyVideoIdRef.current === song.videoId) {
+        return
+      }
+
+      /*
+       * Marcamos antes da chamada ao Supabase para
+       * impedir eventos PLAYING duplicados.
+       */
+      historyVideoIdRef.current = song.videoId
+
+      try {
+        const supabase = createClient()
+
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
+
+        if (userError || !user) {
+          console.error(
+            'Erro ao identificar usuário do histórico:',
+            userError
+          )
+
+          historyVideoIdRef.current = null
+          return
+        }
+
+        const { error } = await supabase
+          .from('play_history')
+          .insert({
+            user_id: user.id,
+            video_id: song.videoId,
+            title: song.title,
+            channel_title: song.artist,
+            thumbnail_url: song.thumbnail || null,
+          })
+
+        if (error) {
+          console.error(
+            'Erro ao registrar histórico:',
+            error
+          )
+
+          historyVideoIdRef.current = null
+        }
+      } catch (error) {
+        console.error(
+          'Erro inesperado ao registrar histórico:',
+          error
+        )
+
+        historyVideoIdRef.current = null
+      }
+    }
 
     function createPlayer() {
       if (
@@ -132,6 +207,19 @@ export default function YoutubeEngine() {
             },
 
             onStateChange: (event) => {
+              /*
+               * A música realmente começou a tocar.
+               * Agora registramos no histórico.
+               */
+              if (
+                event.data === window.YT?.PlayerState.PLAYING
+              ) {
+                void saveHistory()
+              }
+
+              /*
+               * Mantemos a lógica do Auto Next.
+               */
               if (
                 event.data === window.YT?.PlayerState.ENDED
               ) {
