@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import usePlayer from '@/hooks/usePlayer'
 import { Song } from '@/types/song'
+import InstallAppButton from '@/components/InstallAppButton'
 
 type Props = {
   videoId: string
@@ -69,15 +70,21 @@ export default function SharedSongPlayer({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handlePlay}
-            className="mt-6 w-full bg-green-500 hover:bg-green-400 text-black font-bold py-3 rounded-full"
-          >
-            {isCurrent
-              ? '■ Parar'
-              : '▶ Tocar no Nil\'s Music'}
-          </button>
+          <div className="mt-6 space-y-3">
+
+            <button
+              type="button"
+              onClick={handlePlay}
+              className="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-3 rounded-full"
+            >
+              {isCurrent
+                ? '■ Parar'
+                : '▶ Tocar no Nil\'s Music'}
+            </button>
+
+            <InstallAppButton />
+
+          </div>
 
         </div>
       </div>
