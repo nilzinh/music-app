@@ -31,7 +31,10 @@ export default function OnlineSearch({ userId }: Props) {
 
   const {
     currentSong,
+    currentIndex,
+    queue,
     stop,
+    next,
     setQueue,
     registerController,
   } = usePlayer()
@@ -57,6 +60,7 @@ export default function OnlineSearch({ userId }: Props) {
     )
   }
 
+  // Liga os controles do Mini Player ao iframe real
   useEffect(() => {
     registerController({
       pause: () => {
@@ -78,6 +82,8 @@ export default function OnlineSearch({ userId }: Props) {
     }
   }, [registerController])
 
+  // Quando currentSong muda por causa de Próxima/Anterior,
+  // encontra o vídeo correspondente e troca o iframe.
   useEffect(() => {
     if (!currentSong) {
       return
@@ -91,6 +97,51 @@ export default function OnlineSearch({ userId }: Props) {
       setSelectedVideo(video)
     }
   }, [currentSong, videos])
+
+  // Escuta mensagens enviadas pelo YouTube.
+  // Estado 0 significa que o vídeo terminou.
+  useEffect(() => {
+    function handleYoutubeMessage(event: MessageEvent) {
+      if (
+        event.origin !== 'https://www.youtube.com' &&
+        event.origin !== 'https://www.youtube-nocookie.com'
+      ) {
+        return
+      }
+
+      let data
+
+      try {
+        data =
+          typeof event.data === 'string'
+            ? JSON.parse(event.data)
+            : event.data
+      } catch {
+        return
+      }
+
+      if (
+        data?.event === 'onStateChange' &&
+        data?.info === 0
+      ) {
+        if (
+          currentIndex >= 0 &&
+          currentIndex < queue.length - 1
+        ) {
+          next()
+        }
+      }
+    }
+
+    window.addEventListener('message', handleYoutubeMessage)
+
+    return () => {
+      window.removeEventListener(
+        'message',
+        handleYoutubeMessage
+      )
+    }
+  }, [currentIndex, queue.length, next])
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -191,7 +242,10 @@ export default function OnlineSearch({ userId }: Props) {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSearch} className="flex gap-3">
+      <form
+        onSubmit={handleSearch}
+        className="flex gap-3"
+      >
         <input
           type="text"
           id="music-search"
@@ -234,7 +288,9 @@ export default function OnlineSearch({ userId }: Props) {
               <div className="flex-1 min-w-0">
                 <p
                   className={`truncate font-medium ${
-                    isCurrent ? 'text-green-400' : 'text-white'
+                    isCurrent
+                      ? 'text-green-400'
+                      : 'text-white'
                   }`}
                 >
                   {video.snippet.title}
@@ -260,10 +316,14 @@ export default function OnlineSearch({ userId }: Props) {
               <button
                 type="button"
                 onClick={() => handleFavorite(video)}
-                disabled={favoriteLoadingId === video.id.videoId}
+                disabled={
+                  favoriteLoadingId === video.id.videoId
+                }
                 className="text-green-500 text-xl disabled:opacity-50"
               >
-                {favoriteLoadingId === video.id.videoId ? '…' : '💚'}
+                {favoriteLoadingId === video.id.videoId
+                  ? '…'
+                  : '💚'}
               </button>
             </div>
           )
@@ -274,7 +334,9 @@ export default function OnlineSearch({ userId }: Props) {
         <div className="fixed bottom-0 left-0 right-0 bg-zinc-950 border-t border-zinc-800 p-3 shadow-2xl">
           <div className="max-w-5xl mx-auto flex items-center gap-3">
             <img
-              src={selectedVideo.snippet.thumbnails.medium.url}
+              src={
+                selectedVideo.snippet.thumbnails.medium.url
+              }
               alt={selectedVideo.snippet.title}
               className="w-12 h-12 rounded object-cover"
             />
@@ -301,9 +363,20 @@ export default function OnlineSearch({ userId }: Props) {
           <div className="w-0 h-0 overflow-hidden">
             <iframe
               ref={iframeRef}
-              src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1&enablejsapi=1`}
+              src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(
+                window.location.origin
+              )}`}
               allow="autoplay; encrypted-media"
               title={selectedVideo.snippet.title}
+              onLoad={() => {
+                iframeRef.current?.contentWindow?.postMessage(
+                  JSON.stringify({
+                    event: 'listening',
+                    id: 'nils-music-player',
+                  }),
+                  '*'
+                )
+              }}
             />
           </div>
         </div>
