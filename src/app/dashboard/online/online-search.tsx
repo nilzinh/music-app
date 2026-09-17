@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
+import usePlayer from '@/hooks/usePlayer'
 
 type VideoItem = {
   id: {
@@ -28,6 +29,7 @@ type Props = {
 export default function OnlineSearch({ userId }: Props) {
   const supabase = createClient()
 
+  const { play } = usePlayer()
   const [query, setQuery] = useState('')
   const [videos, setVideos] = useState<VideoItem[]>([])
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null)
@@ -105,12 +107,13 @@ export default function OnlineSearch({ userId }: Props) {
   }
 
   function handleToggleVideo(video: VideoItem) {
-    if (selectedVideo?.id.videoId === video.id.videoId) {
-      setSelectedVideo(null)
-    } else {
-      setSelectedVideo(video)
-    }
+  if (selectedVideo?.id.videoId === video.id.videoId) {
+    setSelectedVideo(null)
+  } else {
+    setSelectedVideo(video)
   }
+}
+  
 
   return (
     <div className="space-y-6">

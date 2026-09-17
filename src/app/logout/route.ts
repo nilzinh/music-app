@@ -1,9 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const supabase = await createClient()
+
   await supabase.auth.signOut()
 
-  return NextResponse.redirect(new URL('/auth', 'https://nil-music.vercel.app'))
+  return NextResponse.redirect(
+    new URL('/auth', request.url),
+    303
+  )
 }
