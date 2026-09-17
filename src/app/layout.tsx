@@ -7,6 +7,7 @@ import SplashScreen from './splash-screen'
 import { PlayerProvider } from '@/contexts/PlayerContext'
 import Player from '@/components/player/Player'
 import YoutubeEngine from '@/components/player/YoutubeEngine'
+import MediaSession from '@/components/player/MediaSession'
 
 export const metadata: Metadata = {
   title: "Nil's Music",
@@ -29,7 +30,7 @@ export default function RootLayout({
           {children}
 
           <YoutubeEngine />
-
+          <MediaSession />
           <Player />
         </PlayerProvider>
       </body>
