@@ -29,45 +29,68 @@ type Props = {
 export default function OnlineSearch({ userId }: Props) {
   const supabase = createClient()
 
-  const { play, stop, registerController } = usePlayer()
+  const {
+    currentSong,
+    stop,
+    setQueue,
+    registerController,
+  } = usePlayer()
+
   const [query, setQuery] = useState('')
   const [videos, setVideos] = useState<VideoItem[]>([])
-  const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null)
+  const [selectedVideo, setSelectedVideo] =
+    useState<VideoItem | null>(null)
+
   const [loading, setLoading] = useState(false)
   const [favoriteLoadingId, setFavoriteLoadingId] = useState('')
+
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
 
-function sendYoutubeCommand(command: string) {
-  iframeRef.current?.contentWindow?.postMessage(
-    JSON.stringify({
-      event: 'command',
-      func: command,
-      args: [],
-    }),
-    '*'
-  )
-}
-
-useEffect(() => {
-  registerController({
-    pause: () => {
-      sendYoutubeCommand('pauseVideo')
-    },
-
-    resume: () => {
-      sendYoutubeCommand('playVideo')
-    },
-
-    stop: () => {
-      sendYoutubeCommand('stopVideo')
-      setSelectedVideo(null)
-    },
-  })
-
-  return () => {
-    registerController(null)
+  function sendYoutubeCommand(command: string) {
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({
+        event: 'command',
+        func: command,
+        args: [],
+      }),
+      '*'
+    )
   }
-}, [registerController])
+
+  useEffect(() => {
+    registerController({
+      pause: () => {
+        sendYoutubeCommand('pauseVideo')
+      },
+
+      resume: () => {
+        sendYoutubeCommand('playVideo')
+      },
+
+      stop: () => {
+        sendYoutubeCommand('stopVideo')
+        setSelectedVideo(null)
+      },
+    })
+
+    return () => {
+      registerController(null)
+    }
+  }, [registerController])
+
+  useEffect(() => {
+    if (!currentSong) {
+      return
+    }
+
+    const video = videos.find(
+      (item) => item.id.videoId === currentSong.videoId
+    )
+
+    if (video) {
+      setSelectedVideo(video)
+    }
+  }, [currentSong, videos])
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -115,15 +138,17 @@ useEffect(() => {
         return
       }
 
-      const { error } = await supabase.from('online_favorites').insert({
-        user_id: userId,
-        video_id: video.id.videoId,
-        title: video.snippet.title,
-        channel_title: video.snippet.channelTitle,
-        thumbnail_url:
-          video.snippet.thumbnails.high?.url ||
-          video.snippet.thumbnails.medium.url,
-      })
+      const { error } = await supabase
+        .from('online_favorites')
+        .insert({
+          user_id: userId,
+          video_id: video.id.videoId,
+          title: video.snippet.title,
+          channel_title: video.snippet.channelTitle,
+          thumbnail_url:
+            video.snippet.thumbnails.high?.url ||
+            video.snippet.thumbnails.medium.url,
+        })
 
       if (error) {
         alert(error.message)
@@ -140,25 +165,29 @@ useEffect(() => {
   }
 
   function handleToggleVideo(video: VideoItem) {
-  if (selectedVideo?.id.videoId === video.id.videoId) {
-    setSelectedVideo(null)
-    stop()
-    return
+    if (selectedVideo?.id.videoId === video.id.videoId) {
+      setSelectedVideo(null)
+      stop()
+      return
+    }
+
+    const songs = videos.map((item) => ({
+      id: item.id.videoId,
+      videoId: item.id.videoId,
+      title: item.snippet.title,
+      artist: item.snippet.channelTitle,
+      thumbnail:
+        item.snippet.thumbnails.high?.url ??
+        item.snippet.thumbnails.medium.url,
+    }))
+
+    const startIndex = videos.findIndex(
+      (item) => item.id.videoId === video.id.videoId
+    )
+
+    setSelectedVideo(video)
+    setQueue(songs, startIndex)
   }
-
-  setSelectedVideo(video)
-
-  play({
-    id: video.id.videoId,
-    videoId: video.id.videoId,
-    title: video.snippet.title,
-    artist: video.snippet.channelTitle,
-    thumbnail:
-      video.snippet.thumbnails.high?.url ??
-      video.snippet.thumbnails.medium.url,
-  })
-}
-  
 
   return (
     <div className="space-y-6">
@@ -184,7 +213,8 @@ useEffect(() => {
 
       <div className="space-y-3 pb-40">
         {videos.map((video) => {
-          const isCurrent = selectedVideo?.id.videoId === video.id.videoId
+          const isCurrent =
+            selectedVideo?.id.videoId === video.id.videoId
 
           return (
             <div
@@ -209,12 +239,14 @@ useEffect(() => {
                 >
                   {video.snippet.title}
                 </p>
+
                 <p className="text-xs text-zinc-400 truncate">
                   {video.snippet.channelTitle}
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => handleToggleVideo(video)}
                 className={`px-3 py-1 rounded-full text-sm font-bold ${
                   isCurrent
@@ -226,6 +258,7 @@ useEffect(() => {
               </button>
 
               <button
+                type="button"
                 onClick={() => handleFavorite(video)}
                 disabled={favoriteLoadingId === video.id.videoId}
                 className="text-green-500 text-xl disabled:opacity-50"
@@ -250,13 +283,15 @@ useEffect(() => {
               <p className="truncate text-sm font-semibold">
                 {selectedVideo.snippet.title}
               </p>
+
               <p className="text-xs text-zinc-400 truncate">
                 {selectedVideo.snippet.channelTitle}
               </p>
             </div>
 
             <button
-              onClick={() => setSelectedVideo(null)}
+              type="button"
+              onClick={stop}
               className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-full text-sm font-semibold"
             >
               Fechar
@@ -265,11 +300,11 @@ useEffect(() => {
 
           <div className="w-0 h-0 overflow-hidden">
             <iframe
-  ref={iframeRef}
-  src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1&enablejsapi=1`}
-  allow="autoplay; encrypted-media"
-  title={selectedVideo.snippet.title}
-/>
+              ref={iframeRef}
+              src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1&enablejsapi=1`}
+              allow="autoplay; encrypted-media"
+              title={selectedVideo.snippet.title}
+            />
           </div>
         </div>
       )}

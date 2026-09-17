@@ -2,61 +2,60 @@
 
 import usePlayer from '@/hooks/usePlayer'
 
-
 export default function Player() {
-
   const {
     currentSong,
+    currentIndex,
+    queue,
     isPlaying,
     pause,
     resume,
     stop,
+    next,
+    previous,
   } = usePlayer()
-
 
   if (!currentSong) {
     return null
   }
 
-
-  function handlePlayPause(){
-
-    if(isPlaying){
-
+  function handlePlayPause() {
+    if (isPlaying) {
       pause()
-
-    }else{
-
+    } else {
       resume()
-
     }
-
   }
 
+  const hasPrevious = currentIndex > 0
+
+  const hasNext =
+    currentIndex >= 0 &&
+    currentIndex < queue.length - 1
 
   return (
-<>
-    
-    <div className="
-      fixed
-      bottom-0
-      left-0
-      right-0
-      bg-zinc-950
-      border-t
-      border-zinc-800
-      p-3
-      z-50
-    ">
-
-      <div className="
-        max-w-5xl
-        mx-auto
-        flex
-        items-center
-        gap-3
-      ">
-
+    <div
+      className="
+        fixed
+        bottom-0
+        left-0
+        right-0
+        bg-zinc-950
+        border-t
+        border-zinc-800
+        p-3
+        z-50
+      "
+    >
+      <div
+        className="
+          max-w-5xl
+          mx-auto
+          flex
+          items-center
+          gap-3
+        "
+      >
         <img
           src={currentSong.thumbnail}
           alt={currentSong.title}
@@ -67,67 +66,90 @@ export default function Player() {
             object-cover
           "
         />
-        
-
 
         <div className="flex-1 min-w-0">
-
-          <p className="
-            truncate
-            font-semibold
-            text-white
-          ">
+          <p className="truncate font-semibold text-white">
             {currentSong.title}
           </p>
 
-
-          <p className="
-            truncate
-            text-xs
-            text-zinc-400
-          ">
+          <p className="truncate text-xs text-zinc-400">
             {currentSong.artist}
           </p>
-
         </div>
 
-
+        <button
+          type="button"
+          onClick={previous}
+          disabled={!hasPrevious}
+          className="
+            text-white
+            text-xl
+            px-2
+            py-2
+            disabled:opacity-30
+            disabled:cursor-not-allowed
+          "
+          title="Anterior"
+        >
+          ⏮
+        </button>
 
         <button
+          type="button"
           onClick={handlePlayPause}
           className="
             bg-green-500
+            hover:bg-green-400
             text-black
             rounded-full
-            px-4
-            py-2
+            w-11
+            h-11
+            flex
+            items-center
+            justify-center
             font-bold
           "
+          title={isPlaying ? 'Pausar' : 'Reproduzir'}
         >
-
           {isPlaying ? '❚❚' : '▶'}
-
         </button>
 
-
+        <button
+          type="button"
+          onClick={next}
+          disabled={!hasNext}
+          className="
+            text-white
+            text-xl
+            px-2
+            py-2
+            disabled:opacity-30
+            disabled:cursor-not-allowed
+          "
+          title="Próxima"
+        >
+          ⏭
+        </button>
 
         <button
+          type="button"
           onClick={stop}
           className="
             bg-zinc-800
+            hover:bg-zinc-700
+            text-white
             rounded-full
-            px-3
-            py-2
+            w-10
+            h-10
+            flex
+            items-center
+            justify-center
           "
+          title="Fechar"
         >
           ✕
         </button>
-
-
       </div>
-
     </div>
-    </>
-
   )
 }
