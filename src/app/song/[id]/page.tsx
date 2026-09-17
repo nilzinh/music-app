@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import SharedSongPlayer from './shared-song-player'
 
 export default async function SongPage({
   params,
@@ -8,44 +10,49 @@ export default async function SongPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: song } = await supabase
-    .from('songs')
-    .select('*')
-    .eq('id', id)
-    .single()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!song) {
-    return (
-      <div className="text-white p-10">
-        Música não encontrada
-      </div>
-    )
+  if (!user) {
+    redirect('/auth')
   }
 
+  const { data: favorite } = await supabase
+    .from('online_favorites')
+    .select(
+      'video_id, title, channel_title, thumbnail_url'
+    )
+    .eq('video_id', id)
+    .maybeSingle()
+
+  const { data: historyItem } = favorite
+    ? { data: null }
+    : await supabase
+        .from('play_history')
+        .select(
+          'video_id, title, channel_title, thumbnail_url'
+        )
+        .eq('video_id', id)
+        .order('played_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+  const song = favorite ?? historyItem
+
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-6 p-6">
-      <div className="w-64 h-64 bg-zinc-800 rounded-xl overflow-hidden">
-        {song.cover_url ? (
-          <img
-            src={song.cover_url}
-            alt={song.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-zinc-500">
-            Sem capa
-          </div>
-        )}
-      </div>
-
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">{song.title}</h1>
-        <p className="text-zinc-400">{song.artist}</p>
-      </div>
-
-      <audio controls autoPlay className="w-full max-w-md">
-        <source src={song.file_url} />
-      </audio>
-    </div>
+    <SharedSongPlayer
+      videoId={id}
+      initialSong={
+        song
+          ? {
+              videoId: song.video_id,
+              title: song.title,
+              artist: song.channel_title,
+              thumbnail: song.thumbnail_url ?? '',
+            }
+          : null
+      }
+    />
   )
 }
